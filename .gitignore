@@ -1,0 +1,36 @@
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environments
+venv/
+ENV/
+env/
+.venv/
+
+# Environment configurations and Secrets
+.env
+.agent_env
+.shpargalka.txt
+.litellm_config.yaml
+service-account.json
+shpargalka.txt
+litellm_config.yaml
+
+# SQLite local databases and instance directories
+instance/
+*.db
+*.sqlite3
+
+# IDE / Editor configurations
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Operating System specific files
+Thumbs.db
+desktop.ini
+.DS_Store

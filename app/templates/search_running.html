@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Search Executed | Company Finder{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="h3 mb-0 text-gray-800"><i class="bi bi-rocket-takeoff-fill me-2 text-success"></i>Search Query Executed!</h1>
+        <p class="text-muted">Lead discovery and website scoring filters have been securely received and saved in SQLite database.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-success-subtle text-success-emphasis py-3">
+                <h5 class="m-0 font-weight-bold d-flex align-items-center"><i class="bi bi-check-circle-fill me-2"></i>Discovery Query Registered (Search ID: #{{ search_id }})</h5>
+            </div>
+            <div class="card-body">
+                <p class="card-text fs-5">
+                    We've initiated a crawling sequence for <strong>{{ query }}</strong> leads in <strong>{{ location }}</strong>.
+                </p>
+
+                <h6 class="fw-bold border-bottom pb-2 mt-4 text-muted">Applied Filtration Variables</h6>
+
+                <div class="table-responsive mt-3">
+                    <table class="table table-bordered align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Filter Parameter</th>
+                                <th>Configured Setting</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="fw-semibold">Radius Constraints</td>
+                                <td>{{ filters.radius_km }} km</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-semibold">Minimum Star Rating</td>
+                                <td>{{ filters.min_rating }} ★</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-semibold">Minimum Customer Reviews</td>
+                                <td>{{ filters.min_reviews }} reviews</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-semibold">Phone Requirements</td>
+                                <td>
+                                    {% if filters.has_phone %}
+                                        <span class="badge bg-success">Yes (Required)</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">No (Optional)</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-semibold">Email Requirements</td>
+                                <td>
+                                    {% if filters.has_email %}
+                                        <span class="badge bg-success">Yes (Required)</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">No (Optional)</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-semibold">Social Account Audits</td>
+                                <td>
+                                    {% if filters.has_socials %}
+                                        <span class="badge bg-success">Yes (Required)</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">No (Optional)</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-semibold">Filter Out Large Chains</td>
+                                <td>
+                                    {% if filters.exclude_franchises %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Disabled</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-semibold">Exclude Contacted Leads</td>
+                                <td>
+                                    {% if filters.exclude_contacted %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Disabled</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="alert alert-info d-flex align-items-center mt-4 border-0" role="alert">
+                    <i class="bi bi-info-circle-fill fs-4 me-3 text-info"></i>
+                    <div>
+                        <div class="fw-semibold">What happens next?</div>
+                        In the next integration steps, this query will load our <strong>MockDataProvider</strong>, scan matching local business listings, calculate their <strong>0-100 Opportunity Scores</strong>, and store them directly under Project #{{ project_id }}.
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end border-top pt-3 mt-4">
+                    <a class="btn btn-outline-secondary me-md-2" href="{{ url_for('search.search_form') }}"><i class="bi bi-arrow-left me-2"></i>Run New Search</a>
+                    <a class="btn btn-primary" href="/"><i class="bi bi-speedometer2 me-2"></i>Return to Dashboard</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

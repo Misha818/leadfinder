@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}Lead Search | Company Finder{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="h3 mb-0 text-gray-800"><i class="bi bi-search me-2 text-primary"></i>Discover New B2B Leads</h1>
+        <p class="text-muted">Set up search parameters and filter settings to crawl and identify local businesses with weak websites.</p>
+    </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-lg-10 mx-auto">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-body border-bottom py-3">
+                <h5 class="m-0 font-weight-bold text-primary"><i class="bi bi-funnel-fill me-2"></i>Filter Selection Criteria</h5>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('search.run_search') }}" method="POST" onsubmit="toggleLoader(true, 'Initializing Local Business Lead Scrapes...')">
+
+                    <!-- Workspace Selection -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label for="project_id" class="form-label fw-semibold">Target Outreach Project Workspace</label>
+                            <select class="form-select" id="project_id" name="project_id" required>
+                                {% for proj in projects %}
+                                    <option value="{{ proj.id }}">{{ proj.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">All identified leads from this search will be stored inside the chosen project.</div>
+                        </div>
+                    </div>
+
+                    <h6 class="border-bottom pb-2 mb-3 fw-bold text-secondary"><i class="bi bi-geo-alt-fill me-2"></i>Target Business & Location</h6>
+
+                    <div class="row g-3 mb-4">
+                        <!-- Business Type / Query -->
+                        <div class="col-md-6">
+                            <label for="query" class="form-label fw-semibold">Business Type / Industry Keyword</label>
+                            <input type="text" class="form-control" id="query" name="query" list="business-suggestions" placeholder="e.g. Dentist, Pizza, Plumbing..." required autocomplete="off">
+                            <datalist id="business-suggestions">
+                                <option value="Restaurant">
+                                <option value="Cafe">
+                                <option value="Bakery">
+                                <option value="Dentist">
+                                <option value="Lawyer">
+                                <option value="Hotel">
+                                <option value="Plumber">
+                                <option value="Salon">
+                                <option value="Auto Repair">
+                                <option value="Gym">
+                                </datalist>
+                            <div class="form-text">Choose from list or type any custom industry.</div>
+                        </div>
+
+                        <!-- Location / Area -->
+                        <div class="col-md-6">
+                            <label for="location" class="form-label fw-semibold">Location (City, Country)</label>
+                            <input type="text" class="form-control" id="location" name="location" list="location-suggestions" placeholder="e.g. Yerevan, Tbilisi, Gyumri..." required autocomplete="off">
+                            <datalist id="location-suggestions">
+                                <option value="Yerevan, Armenia">
+                                <option value="Gyumri, Armenia">
+                                <option value="Tbilisi, Georgia">
+                                </datalist>
+                            <div class="form-text">Specify city, region, or complete address.</div>
+                        </div>
+                    </div>
+
+                    <h6 class="border-bottom pb-2 mb-3 fw-bold text-secondary"><i class="bi bi-sliders me-2"></i>Advanced Search Filters</h6>
+
+                    <!-- Advanced Filters Layout -->
+                    <div class="row g-3 mb-4">
+                        <!-- Radius Slider -->
+                        <div class="col-md-4">
+                            <label for="radius" class="form-label fw-semibold">Search Radius: <span id="radius-val" class="text-primary fw-bold">10</span> km</label>
+                            <input type="range" class="form-range" min="1" max="50" step="1" value="10" id="radius" name="radius" oninput="document.getElementById('radius-val').textContent = this.value">
+                        </div>
+
+                        <!-- Min Star Rating -->
+                        <div class="col-md-4">
+                            <label for="min_rating" class="form-label fw-semibold">Minimum Rating: <span id="rating-val" class="text-success fw-bold">3.0</span> ★</label>
+                            <input type="range" class="form-range" min="0" max="5" step="0.5" value="3.0" id="min_rating" name="min_rating" oninput="document.getElementById('rating-val').textContent = parseFloat(this.value).toFixed(1)">
+                        </div>
+
+                        <!-- Min Reviews count -->
+                        <div class="col-md-4">
+                            <label for="min_reviews" class="form-label fw-semibold">Minimum Review Count</label>
+                            <input type="number" class="form-control" id="min_reviews" name="min_reviews" min="0" value="0" placeholder="e.g. 10">
+                        </div>
+                    </div>
+
+                    <!-- Filter Checkboxes -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6 col-lg-4">
+                            <div class="form-check form-switch card p-3 border shadow-none hover-bg">
+                                <input class="form-check-input ms-0 me-2" type="checkbox" role="switch" id="is_open" name="is_open" value="y">
+                                <label class="form-check-label fw-semibold" for="is_open">Must Be Open Now</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-4">
+                            <div class="form-check form-switch card p-3 border shadow-none hover-bg">
+                                <input class="form-check-input ms-0 me-2" type="checkbox" role="switch" id="has_phone" name="has_phone" value="y">
+                                <label class="form-check-label fw-semibold" for="has_phone">Must Have Phone Number</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-4">
+                            <div class="form-check form-switch card p-3 border shadow-none hover-bg">
+                                <input class="form-check-input ms-0 me-2" type="checkbox" role="switch" id="has_email" name="has_email" value="y">
+                                <label class="form-check-label fw-semibold" for="has_email">Must Have Public Email</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-4">
+                            <div class="form-check form-switch card p-3 border shadow-none hover-bg">
+                                <input class="form-check-input ms-0 me-2" type="checkbox" role="switch" id="has_socials" name="has_socials" value="y">
+                                <label class="form-check-label fw-semibold" for="has_socials">Must Have Social Channels</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-4">
+                            <div class="form-check form-switch card p-3 border shadow-none hover-bg">
+                                <input class="form-check-input ms-0 me-2" type="checkbox" role="switch" id="exclude_franchises" name="exclude_franchises" value="y" checked>
+                                <label class="form-check-label fw-semibold" for="exclude_franchises">Exclude Big Franchises</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-4">
+                            <div class="form-check form-switch card p-3 border shadow-none hover-bg">
+                                <input class="form-check-input ms-0 me-2" type="checkbox" role="switch" id="exclude_contacted" name="exclude_contacted" value="y" checked>
+                                <label class="form-check-label fw-semibold" for="exclude_contacted">Exclude Contacted Leads</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Actions -->
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end border-top pt-4">
+                        <button class="btn btn-light me-md-2" type="reset"><i class="bi bi-arrow-counterclockwise me-2"></i>Reset Form</button>
+                        <button class="btn btn-primary px-5" type="submit"><i class="bi bi-lightning-charge-fill me-2"></i>Launch Scraper Search</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

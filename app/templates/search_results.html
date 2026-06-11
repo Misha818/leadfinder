@@ -1,0 +1,492 @@
+{% extends "base.html" %}
+
+{% block title %}Search Results | Company Finder{% endblock %}
+
+{% block content %}
+<!-- Top Header and Exporters -->
+<div class="row mb-4 align-items-center">
+    <div class="col-md-6">
+        <h1 class="h3 mb-0 text-gray-800"><i class="bi bi-file-earmark-bar-graph me-2 text-primary"></i>Lead Scan Results</h1>
+        <p class="text-muted mb-0">Results for "<strong>{{ search.query }}</strong>" in <strong>{{ search.location }}</strong> (Workspace: #{{ search.project_id }})</p>
+    </div>
+    <div class="col-md-6 text-md-end mt-3 mt-md-0">
+        <div class="btn-group shadow-sm">
+            <a href="{{ url_for('search.export_csv', search_id=search.id) }}" class="btn btn-outline-secondary">
+                <i class="bi bi-filetype-csv me-2 text-success"></i> Export CSV
+            </a>
+            <a href="{{ url_for('search.export_excel', search_id=search.id) }}" class="btn btn-outline-secondary">
+                <i class="bi bi-file-earmark-excel me-2 text-primary"></i> Export Excel
+            </a>
+        </div>
+        <a href="{{ url_for('search.search_form') }}" class="btn btn-primary ms-2 shadow-sm">
+            <i class="bi bi-plus-lg me-2"></i> New Scan
+        </a>
+    </div>
+</div>
+
+<!-- Highlight Summary Row -->
+<div class="row mb-4">
+    <!-- Total Scanned -->
+    <div class="col-md-4 mb-3 mb-md-0">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body py-3 d-flex align-items-center">
+                <div class="rounded-circle bg-primary-subtle p-3 me-3">
+                    <i class="bi bi-briefcase-fill text-primary fs-4"></i>
+                </div>
+                <div>
+                    <div class="text-muted small text-uppercase">Leads Found</div>
+                    <div class="h4 mb-0 fw-bold">{{ leads|length }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Avg Opportunity Score -->
+    <div class="col-md-4 mb-3 mb-md-0">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body py-3 d-flex align-items-center">
+                <div class="rounded-circle bg-warning-subtle p-3 me-3">
+                    <i class="bi bi-lightning-charge-fill text-warning fs-4"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="text-muted small text-uppercase">Avg Opportunity Score</div>
+                    <div class="d-flex align-items-center">
+                        <span class="h4 mb-0 fw-bold me-2">{{ avg_score }}/100</span>
+                        {% if avg_score >= 90 %}
+                            <span class="badge bg-danger-subtle text-danger small">Very High Need</span>
+                        {% elif avg_score >= 70 %}
+                            <span class="badge bg-warning-subtle text-warning small">High Need</span>
+                        {% elif avg_score >= 40 %}
+                            <span class="badge bg-info-subtle text-info small">Moderate Need</span>
+                        {% else %}
+                            <span class="badge bg-success-subtle text-success small">Low Need</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Targets without website -->
+    <div class="col-md-4">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body py-3 d-flex align-items-center">
+                <div class="rounded-circle bg-danger-subtle p-3 me-3">
+                    <i class="bi bi-globe-slash text-danger fs-4"></i>
+                </div>
+                <div>
+                    <div class="text-muted small text-uppercase">No Website Leads</div>
+                    <div class="h4 mb-0 fw-bold">
+                        {% set ns = namespace(count=0) %}
+                        {% for lead in leads %}
+                            {% if lead.score and not lead.score.has_website %}
+                                {% set ns.count = ns.count + 1 %}
+                            {% endif %}
+                        {% endfor %}
+                        {{ ns.count }} <span class="fs-6 text-muted fw-normal">({{ ((ns.count / (leads|length or 1)) * 100)|int }}%)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Results Layout (Filter indicators + Data Table) -->
+<div class="row">
+    <!-- Active filters overview -->
+    <div class="col-lg-3 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-body border-bottom py-3">
+                <h6 class="m-0 font-weight-bold text-body fw-bold"><i class="bi bi-funnel me-2 text-primary"></i>Applied Search Criteria</h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush small">
+                    <li class="list-group-item px-0 d-flex justify-content-between">
+                        <span class="text-muted">Industry Query:</span>
+                        <span class="fw-bold">{{ search.query }}</span>
+                    </li>
+                    <li class="list-group-item px-0 d-flex justify-content-between">
+                        <span class="text-muted">Location:</span>
+                        <span class="fw-bold">{{ search.location }}</span>
+                    </li>
+                    <li class="list-group-item px-0 d-flex justify-content-between">
+                        <span class="text-muted">Radius:</span>
+                        <span class="fw-bold">{{ filters.radius_km }} km</span>
+                    </li>
+                    <li class="list-group-item px-0 d-flex justify-content-between">
+                        <span class="text-muted">Min Rating Filter:</span>
+                        <span class="fw-bold">{{ filters.min_rating }} ★</span>
+                    </li>
+                    <li class="list-group-item px-0 d-flex justify-content-between">
+                        <span class="text-muted">Min Reviews:</span>
+                        <span class="fw-bold">{{ filters.min_reviews }}</span>
+                    </li>
+                    <li class="list-group-item px-0 d-flex justify-content-between">
+                        <span class="text-muted">Has Phone:</span>
+                        <span class="fw-bold text-{{ 'success' if filters.has_phone else 'secondary' }}">
+                            {{ 'Required' if filters.has_phone else 'Optional' }}
+                        </span>
+                    </li>
+                    <li class="list-group-item px-0 d-flex justify-content-between">
+                        <span class="text-muted">Has Email:</span>
+                        <span class="fw-bold text-{{ 'success' if filters.has_email else 'secondary' }}">
+                            {{ 'Required' if filters.has_email else 'Optional' }}
+                        </span>
+                    </li>
+                    <li class="list-group-item px-0 d-flex justify-content-between">
+                        <span class="text-muted">Has Socials:</span>
+                        <span class="fw-bold text-{{ 'success' if filters.has_socials else 'secondary' }}">
+                            {{ 'Required' if filters.has_socials else 'Optional' }}
+                        </span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scored Leads Table Card -->
+    <div class="col-lg-9 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-body border-bottom py-3 d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2">
+                <h6 class="m-0 font-weight-bold text-body fw-bold"><i class="bi bi-table me-2 text-primary"></i>Target Directory</h6>
+                <!-- Client-side Search -->
+                <div class="col-xs-12 col-sm-4">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-search"></i></span>
+                        <input type="text" id="table-search" class="form-control bg-light border-start-0 ps-0" placeholder="Filter this view...">
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="leads-table">
+                        <thead class="table-light text-uppercase fs-7">
+                            <tr>
+                                <th class="ps-3 border-0 sortable" data-sort="name">Business Name <i class="bi bi-arrow-down-up ms-1 small opacity-50"></i></th>
+                                <th class="border-0 sortable text-center" data-sort="rating">Rating <i class="bi bi-arrow-down-up ms-1 small opacity-50"></i></th>
+                                <th class="border-0">Phone</th>
+                                <th class="border-0 text-center">Web Status</th>
+                                <th class="border-0 sortable text-center" data-sort="score">Opportunity Score <i class="bi bi-arrow-down-up ms-1 small opacity-50"></i></th>
+                                <th class="border-0 text-end pe-3">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for lead in leads %}
+                            <tr class="lead-row">
+                                <td class="ps-3">
+                                    <div class="fw-bold text-body mb-0">{{ lead.name }}</div>
+                                    <div class="text-muted small"><i class="bi bi-geo-alt-fill me-1 text-danger"></i>{{ lead.address or search.location }}</div>
+                                </td>
+                                <td class="text-center">
+                                    <div class="fw-semibold">4.5 <span class="text-warning">★</span></div>
+                                    <div class="text-muted small">120 reviews</div>
+                                </td>
+                                <td class="small">{{ lead.phone or '<span class="text-danger">No Phone</span>'|safe }}</td>
+                                <td class="text-center">
+                                    {% if lead.score and lead.score.has_website %}
+                                        {% if lead.score.has_ssl and lead.score.is_responsive %}
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle" title="SSL Active, Mobile-friendly"><i class="bi bi-check-circle-fill me-1"></i>Optimized</span>
+                                        {% else %}
+                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle" title="Deficient loading or SSL issues"><i class="bi bi-exclamation-triangle-fill me-1"></i>Deficient</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle" title="Completely lacks website"><i class="bi bi-globe-slash me-1"></i>No Website</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if lead.score %}
+                                        {% if lead.score.opportunity_level == 'Very High' %}
+                                            <span class="badge bg-danger text-white fs-7 py-2 px-3 fw-bold" style="min-width: 140px;" data-raw-score="{{ lead.score.score }}">{{ lead.score.score }} - Very High</span>
+                                        {% elif lead.score.opportunity_level == 'High' %}
+                                            <span class="badge bg-warning text-dark fs-7 py-2 px-3 fw-bold" style="min-width: 140px;" data-raw-score="{{ lead.score.score }}">{{ lead.score.score }} - High</span>
+                                        {% elif lead.score.opportunity_level == 'Medium' %}
+                                            <span class="badge bg-info text-dark fs-7 py-2 px-3 fw-bold" style="min-width: 140px;" data-raw-score="{{ lead.score.score }}">{{ lead.score.score }} - Medium</span>
+                                        {% else %}
+                                            <span class="badge bg-success text-white fs-7 py-2 px-3 fw-bold" style="min-width: 140px;" data-raw-score="{{ lead.score.score }}">{{ lead.score.score }} - Low</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge bg-secondary" data-raw-score="0">0 - None</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end pe-3">
+                                    <div class="btn-group btn-group-sm shadow-none">
+                                        <button class="btn btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#audit-{{ lead.id }}" aria-expanded="false" aria-controls="audit-{{ lead.id }}" title="Toggle quick audit preview">
+                                            <i class="bi bi-eye"></i> Quick Audit
+                                        </button>
+                                        <a class="btn btn-outline-primary" href="{{ url_for('business.business_detail', business_id=lead.id) }}" title="Open full Lead Profile console">
+                                            <i class="bi bi-pencil-square"></i> Manage
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            <!-- Collapsible Audit Checklist -->
+                            <tr class="collapse-row bg-light-subtle">
+                                <td colspan="6" class="p-0 border-0">
+                                    <div class="collapse border-start border-primary border-4 p-4 mx-3 my-2 bg-body rounded shadow-sm" id="audit-{{ lead.id }}">
+
+                                        <!-- Visual Score Analysis and Recommended Sales Angle -->
+                                        <div class="row mb-4">
+                                            <div class="col-12">
+                                                {% if lead.score and lead.score.opportunity_level == 'Very High' %}
+                                                    <div class="alert alert-danger border-0 d-flex gap-3 align-items-start" role="alert">
+                                                        <i class="bi bi-lightning-charge-fill fs-3 text-danger"></i>
+                                                {% elif lead.score and lead.score.opportunity_level == 'High' %}
+                                                    <div class="alert alert-warning border-0 d-flex gap-3 align-items-start" role="alert">
+                                                        <i class="bi bi-exclamation-triangle-fill fs-3 text-warning"></i>
+                                                {% elif lead.score and lead.score.opportunity_level == 'Medium' %}
+                                                    <div class="alert alert-info border-0 d-flex gap-3 align-items-start" role="alert">
+                                                        <i class="bi bi-info-circle-fill fs-3 text-info"></i>
+                                                {% else %}
+                                                    <div class="alert alert-success border-0 d-flex gap-3 align-items-start" role="alert">
+                                                        <i class="bi bi-check-circle-fill fs-3 text-success"></i>
+                                                {% endif %}
+                                                    <div>
+                                                        <h5 class="alert-heading fw-bold mb-1">{{ lead.score.opportunity_level }} Opportunity Pitch Identified</h5>
+                                                        <p class="mb-2 small">{{ lead.score.explanation }}</p>
+                                                        <hr class="my-2">
+                                                        <p class="mb-0 fw-bold small"><i class="bi bi-award me-1"></i>Recommended Sales Angle:</p>
+                                                        <p class="mb-0 small text-decoration-underline">{{ lead.score.sales_angle }}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row g-3">
+                                            <!-- Technical Checkpoints -->
+                                            <div class="col-md-6 border-end">
+                                                <h6 class="fw-bold border-bottom pb-2 text-primary"><i class="bi bi-shield-check me-2"></i>Technical Presence Scan</h6>
+                                                <ul class="list-group list-group-flush shadow-none">
+                                                    <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0">
+                                                        <span><i class="bi bi-globe me-2"></i>Public Website URL</span>
+                                                        {% if lead.website_url %}
+                                                            <a href="{{ lead.website_url }}" target="_blank" class="small fw-semibold text-truncate" style="max-width: 200px;">{{ lead.website_url }}</a>
+                                                        {% else %}
+                                                            <span class="text-danger small fw-semibold">No website listed</span>
+                                                        {% endif %}
+                                                    </li>
+                                                    <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0">
+                                                        <span><i class="bi bi-phone me-2"></i>Mobile Responsive Layout</span>
+                                                        {% if lead.score and lead.score.is_responsive %}
+                                                            <span class="badge bg-success"><i class="bi bi-check-lg"></i> Yes</span>
+                                                        {% else %}
+                                                            <span class="badge bg-danger"><i class="bi bi-x-lg"></i> No</span>
+                                                        {% endif %}
+                                                    </li>
+                                                    <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0">
+                                                        <span><i class="bi bi-lock me-2"></i>SSL Certificate Validation</span>
+                                                        {% if lead.score and lead.score.has_ssl %}
+                                                            <span class="badge bg-success"><i class="bi bi-check-lg"></i> Secure (HTTPS)</span>
+                                                        {% else %}
+                                                            <span class="badge bg-danger"><i class="bi bi-x-lg"></i> Insecure (HTTP)</span>
+                                                        {% endif %}
+                                                    </li>
+                                                    <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0">
+                                                        <span><i class="bi bi-speedometer me-2"></i>Audited Load Speed</span>
+                                                        {% if lead.score and lead.score.has_website %}
+                                                            <span class="fw-bold text-{{ 'danger' if lead.score.load_time_seconds > 3 else 'success' }}">{{ lead.score.load_time_seconds }} seconds</span>
+                                                        {% else %}
+                                                            <span class="text-muted small">N/A</span>
+                                                        {% endif %}
+                                                    </li>
+                                                </ul>
+                                            </div>
+
+                                            <!-- Marketing/SEO Checkpoints -->
+                                            <div class="col-md-6">
+                                                <h6 class="fw-bold border-bottom pb-2 text-primary"><i class="bi bi-rocket me-2"></i>SEO & Sales Opportunities</h6>
+                                                <ul class="list-group list-group-flush shadow-none">
+                                                    <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0">
+                                                        <span><i class="bi bi-tag me-2"></i>SEO Title Meta Attribute</span>
+                                                        {% if lead.score and lead.score.seo_title_present %}
+                                                            <span class="badge bg-success"><i class="bi bi-check-lg"></i> Detected</span>
+                                                        {% else %}
+                                                            <span class="badge bg-danger"><i class="bi bi-x-lg"></i> Missing / Empty</span>
+                                                        {% endif %}
+                                                    </li>
+                                                    <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0">
+                                                        <span><i class="bi bi-share me-2"></i>Social Sharing Integrations</span>
+                                                        {% if lead.score and lead.score.has_website %}
+                                                            <span class="fw-bold">{{ lead.score.social_links_count }} channels</span>
+                                                        {% else %}
+                                                            <span class="text-muted small">N/A</span>
+                                                        {% endif %}
+                                                    </li>
+                                                    <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0">
+                                                        <span><i class="bi bi-envelope me-2"></i>Public Email Address</span>
+                                                        <span class="small fw-semibold">{{ lead.email or '<span class="text-danger">Not found</span>'|safe }}</span>
+                                                    </li>
+                                                    <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0">
+                                                        <span><i class="bi bi-geo-alt me-2"></i>Google Maps Directory</span>
+                                                        {% if lead.google_maps_url %}
+                                                            <a href="{{ lead.google_maps_url }}" target="_blank" class="small fw-semibold text-truncate">Open Listing</a>
+                                                        {% else %}
+                                                            <span class="text-muted small">N/A</span>
+                                                        {% endif %}
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination footer layout -->
+                <div class="card-footer bg-body border-top py-3 d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2">
+                    <span class="text-muted small" id="pagination-status">Showing 1 to 10 of {{ leads|length }} leads</span>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0" id="pagination-controls">
+                            <!-- Injected by client-side JS -->
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Client-side Interactive Search, Sort, and Pagination JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('table-search');
+    const table = document.getElementById('leads-table');
+    const rows = Array.from(table.querySelectorAll('tbody tr.lead-row'));
+    const collapseRows = Array.from(table.querySelectorAll('tbody tr.collapse-row'));
+    const paginationControls = document.getElementById('pagination-controls');
+    const paginationStatus = document.getElementById('pagination-status');
+    const sortHeaders = table.querySelectorAll('thead th.sortable');
+
+    let filteredRows = [...rows];
+    let currentPage = 1;
+    const itemsPerPage = 10;
+    let sortDirection = {}; // tracks sort order per column
+
+    // ----------------------------------------------------
+    // 1. Client-Side Search / Filtering
+    // ----------------------------------------------------
+    searchInput.addEventListener('input', () => {
+        const query = searchInput.value.toLowerCase().trim();
+
+        filteredRows = rows.filter((row, index) => {
+            const text = row.textContent.toLowerCase();
+            const matches = text.includes(query);
+
+            if (!matches) {
+                // Ensure details corresponding to hidden rows are also closed
+                const detailsCollapse = collapseRows[index].querySelector('.collapse');
+                if (detailsCollapse && detailsCollapse.classList.contains('show')) {
+                    bootstrap.Collapse.getInstance(detailsCollapse).hide();
+                }
+            }
+
+            return matches;
+        });
+
+        currentPage = 1;
+        renderTable();
+    });
+
+    // ----------------------------------------------------
+    // 2. Client-Side Sorting
+    // ----------------------------------------------------
+    sortHeaders.forEach(header => {
+        header.addEventListener('click', () => {
+            const sortBy = header.getAttribute('data-sort');
+            const direction = sortDirection[sortBy] === 'asc' ? 'desc' : 'asc';
+            sortDirection[sortBy] = direction;
+
+            // Update sorting icon representations
+            sortHeaders.forEach(h => {
+                const icon = h.querySelector('i');
+                icon.className = 'bi bi-arrow-down-up ms-1 small opacity-50';
+            });
+            const activeIcon = header.querySelector('i');
+            activeIcon.className = direction === 'asc' ? 'bi bi-arrow-up text-primary ms-1 small' : 'bi bi-arrow-down text-primary ms-1 small';
+
+            filteredRows.sort((a, b) => {
+                let valA, valB;
+
+                if (sortBy === 'name') {
+                    valA = a.querySelector('td:nth-child(1) .fw-bold').textContent.trim().toLowerCase();
+                    valB = b.querySelector('td:nth-child(1) .fw-bold').textContent.trim().toLowerCase();
+                    return direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                } else if (sortBy === 'rating') {
+                    valA = parseFloat(a.querySelector('td:nth-child(2) .fw-semibold').textContent);
+                    valB = parseFloat(b.querySelector('td:nth-child(2) .fw-semibold').textContent);
+                    return direction === 'asc' ? valA - valB : valB - valA;
+                } else if (sortBy === 'score') {
+                    valA = parseInt(a.querySelector('td:nth-child(5) span').getAttribute('data-raw-score'));
+                    valB = parseInt(b.querySelector('td:nth-child(5) span').getAttribute('data-raw-score'));
+                    return direction === 'asc' ? valA - valB : valB - valA;
+                }
+                return 0;
+            });
+
+            renderTable();
+        });
+    });
+
+    // ----------------------------------------------------
+    // 3. Client-Side Pagination
+    // ----------------------------------------------------
+    function renderTable() {
+        const totalItems = filteredRows.length;
+        const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+
+        // Clamp page index
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        const startIdx = (currentPage - 1) * itemsPerPage;
+        const endIdx = Math.min(startIdx + itemsPerPage, totalItems);
+
+        // Hide all rows initially
+        rows.forEach((row, idx) => {
+            row.style.display = 'none';
+            collapseRows[idx].style.display = 'none';
+        });
+
+        // Show rows on current page
+        filteredRows.slice(startIdx, endIdx).forEach(row => {
+            row.style.display = '';
+            // Find its matching collapse row index in the original array
+            const originalIndex = rows.indexOf(row);
+            collapseRows[originalIndex].style.display = '';
+        });
+
+        // Update status text
+        if (totalItems === 0) {
+            paginationStatus.textContent = "No matching leads found.";
+        } else {
+            paginationStatus.textContent = `Showing ${startIdx + 1} to ${endIdx} of ${totalItems} leads`;
+        }
+
+        // Render Pagination buttons
+        let btnHTML = `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}"><a class="page-link" href="#" data-page="${currentPage - 1}"><i class="bi bi-chevron-left"></i></a></li>`;
+        for (let i = 1; i <= totalPages; i++) {
+            btnHTML += `<li class="page-item ${currentPage === i ? 'active' : ''}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+        }
+        btnHTML += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}"><a class="page-link" href="#" data-page="${currentPage + 1}"><i class="bi bi-chevron-right"></i></a></li>`;
+        paginationControls.innerHTML = btnHTML;
+
+        // Attach event handlers on pagination controls
+        paginationControls.querySelectorAll('a').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetPage = parseInt(btn.getAttribute('data-page'));
+                if (targetPage && targetPage !== currentPage && targetPage >= 1 && targetPage <= totalPages) {
+                    currentPage = targetPage;
+                    renderTable();
+                }
+            });
+        });
+    }
+
+    // Initialize display rendering
+    renderTable();
+});
+</script>
+{% endblock %}

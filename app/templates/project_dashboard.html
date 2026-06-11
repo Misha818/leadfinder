@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project.name }} Workspace | Company Finder{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-md-6">
+        <h1 class="h3 mb-0 text-gray-800"><i class="bi bi-folder-fill me-2 text-warning"></i>{{ project.name }} Dashboard</h1>
+        <p class="text-muted mb-0">{{ project.description }}</p>
+    </div>
+    <div class="col-md-6 text-md-end mt-3 mt-md-0">
+        <a href="{{ url_for('search.search_form') }}" class="btn btn-primary shadow-sm">
+            <i class="bi bi-search me-2"></i> Run New Scan
+        </a>
+    </div>
+</div>
+
+<!-- Conversion Analytics Panels -->
+<div class="row mb-4">
+    <!-- Total leads -->
+    <div class="col-md-3 mb-3">
+        <div class="card h-100 border-start border-primary border-4 shadow-sm">
+            <div class="card-body py-3 d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="text-muted small text-uppercase font-monospace">Workspace Leads</div>
+                    <div class="h4 mb-0 fw-bold text-dark">{{ stats.total_leads }}</div>
+                </div>
+                <i class="bi bi-briefcase text-primary fs-3 opacity-50"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- High opportunity counts -->
+    <div class="col-md-3 mb-3">
+        <div class="card h-100 border-start border-danger border-4 shadow-sm">
+            <div class="card-body py-3 d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="text-muted small text-uppercase font-monospace">High Opportunity</div>
+                    <div class="h4 mb-0 fw-bold text-dark">{{ stats.high_opportunity }}</div>
+                </div>
+                <i class="bi bi-fire text-danger fs-3 opacity-50"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contacted -->
+    <div class="col-md-3 mb-3">
+        <div class="card h-100 border-start border-info border-4 shadow-sm">
+            <div class="card-body py-3 d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="text-muted small text-uppercase font-monospace">Total Contacted</div>
+                    <div class="h4 mb-0 fw-bold text-dark">{{ stats.total_contacted }}</div>
+                </div>
+                <i class="bi bi-chat-dots text-info fs-3 opacity-50"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conversion rate -->
+    <div class="col-md-3 mb-3">
+        <div class="card h-100 border-start border-success border-4 shadow-sm">
+            <div class="card-body py-3 d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="text-muted small text-uppercase font-monospace">Conversion Rate</div>
+                    <div class="h4 mb-0 fw-bold text-dark">{{ stats.conversion_rate }}%</div>
+                </div>
+                <i class="bi bi-trophy text-success fs-3 opacity-50"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detailed conversion pipeline and lists grid -->
+<div class="row">
+    <!-- Pipeline conversion funnel metrics -->
+    <div class="col-lg-4 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-body border-bottom py-3">
+                <h6 class="m-0 font-weight-bold text-body fw-bold"><i class="bi bi-funnel-fill me-2 text-primary"></i>Outreach Pipeline Funnel</h6>
+            </div>
+            <div class="card-body d-flex flex-column justify-content-center">
+                <div class="row mb-3">
+                    <div class="col-8">Meeting Booked</div>
+                    <div class="col-4 text-end fw-bold text-warning">{{ stats.meeting_booked }}</div>
+                    <div class="col-12 mt-1">
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-warning" role="progressbar" style="width: {{ (stats.meeting_booked / (stats.total_contacted or 1) * 100)|int }}%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-8">Closed Won (Websites Sold)</div>
+                    <div class="col-4 text-end fw-bold text-success">{{ stats.closed_won }}</div>
+                    <div class="col-12 mt-1">
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: {{ (stats.closed_won / (stats.total_contacted or 1) * 100)|int }}%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-8">Not Interested / Closed Lost</div>
+                    <div class="col-4 text-end fw-bold text-danger">{{ stats.not_interested + stats.closed_lost }}</div>
+                    <div class="col-12 mt-1">
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-danger" role="progressbar" style="width: {{ ((stats.not_interested + stats.closed_lost) / (stats.total_contacted or 1) * 100)|int }}%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-8">Website Already Exists (Disqualified)</div>
+                    <div class="col-4 text-end fw-bold text-secondary">{{ stats.website_exists }}</div>
+                    <div class="col-12 mt-1">
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-secondary" role="progressbar" style="width: {{ (stats.website_exists / (stats.total_leads or 1) * 100)|int }}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Workspace Leads directory -->
+    <div class="col-lg-8 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-body border-bottom py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-body fw-bold"><i class="bi bi-people-fill me-2 text-primary"></i>Workspace Leads Directory</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light text-uppercase fs-7 sticky-top">
+                            <tr>
+                                <th class="ps-3 border-0">Business</th>
+                                <th class="border-0">Opportunity Score</th>
+                                <th class="border-0">Outreach Status</th>
+                                <th class="border-0 text-end pe-3">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for lead in leads %}
+                            <tr>
+                                <td class="ps-3">
+                                    <div class="fw-bold text-body mb-0">{{ lead.name }}</div>
+                                    <div class="text-muted small"><i class="bi bi-geo-alt-fill me-1 text-danger"></i>{{ lead.address }}</div>
+                                </td>
+                                <td>
+                                    {% if lead.score %}
+                                        {% if lead.score.opportunity_level == 'Very High' %}
+                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">{{ lead.score.score }} - Very High</span>
+                                        {% elif lead.score.opportunity_level == 'High' %}
+                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle">{{ lead.score.score }} - High</span>
+                                        {% elif lead.score.opportunity_level == 'Medium' %}
+                                            <span class="badge bg-info-subtle text-info border border-info-subtle">{{ lead.score.score }} - Med</span>
+                                        {% else %}
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle">{{ lead.score.score }} - Low</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge bg-secondary">0 - N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if lead.status == 'lead' %}
+                                        <span class="badge bg-secondary">Raw Lead</span>
+                                    {% elif lead.status == 'contacted' %}
+                                        <span class="badge bg-primary">Contacted</span>
+                                    {% elif lead.status == 'meeting_booked' %}
+                                        <span class="badge bg-warning text-dark">Meeting Booked</span>
+                                    {% elif lead.status == 'closed_won' %}
+                                        <span class="badge bg-success">Closed Won</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">{{ lead.status|replace('_', ' ')|capitalize }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end pe-3">
+                                    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('business.business_detail', business_id=lead.id) }}">
+                                        <i class="bi bi-pencil-square"></i> Manage
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center py-4 text-muted">
+                                    No leads are saved inside this workspace yet. Execute a scan to populate it!
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
