@@ -14,12 +14,12 @@
 <div class="row mb-4">
     <!-- Active Projects -->
     <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card h-100 border-start border-primary border-4 shadow-sm py-2">
+        <div class="card h-100 border-start border-primary border-4 shadow-sm py-2" style="cursor: pointer;" onclick="window.location.href='{{ url_for('project.list_projects') }}'" title="Enter Projects workspace list">
             <div class="card-body">
                 <div class="row align-items-center">
                     <div class="col">
                         <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Active Projects</div>
-                        <div class="h5 mb-0 font-weight-bold text-body">{{ stats.total_projects }}</div>
+                        <div class="h5 mb-0 font-weight-bold text-body" id="stats-projects-count">{{ stats.total_projects }}</div>
                     </div>
                     <div class="col-auto">
                         <i class="bi bi-folder-fill fa-2x text-primary fs-3 opacity-50"></i>
@@ -31,12 +31,12 @@
 
     <!-- Lead Searches Run -->
     <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card h-100 border-start border-success border-4 shadow-sm py-2">
+        <div class="card h-100 border-start border-success border-4 shadow-sm py-2" style="cursor: pointer;" onclick="window.location.href='{{ url_for('search.search_history') }}'" title="View crawls log transactions history">
             <div class="card-body">
                 <div class="row align-items-center">
                     <div class="col">
                         <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Scans Executed</div>
-                        <div class="h5 mb-0 font-weight-bold text-body">{{ stats.total_searches }}</div>
+                        <div class="h5 mb-0 font-weight-bold text-body" id="stats-scans-count">{{ stats.total_searches }}</div>
                     </div>
                     <div class="col-auto">
                         <i class="bi bi-search fa-2x text-success fs-3 opacity-50"></i>
@@ -53,7 +53,7 @@
                 <div class="row align-items-center">
                     <div class="col">
                         <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Leads Identified</div>
-                        <div class="h5 mb-0 font-weight-bold text-body">{{ stats.total_businesses }}</div>
+                        <div class="h5 mb-0 font-weight-bold text-body" id="stats-leads-count">{{ stats.total_businesses }}</div>
                     </div>
                     <div class="col-auto">
                         <i class="bi bi-briefcase-fill fa-2x text-info fs-3 opacity-50"></i>
@@ -70,7 +70,7 @@
                 <div class="row align-items-center">
                     <div class="col">
                         <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Avg Opportunity</div>
-                        <div class="h5 mb-0 font-weight-bold text-body">{{ stats.avg_opportunity_score }}/100</div>
+                        <div class="h5 mb-0 font-weight-bold text-body" id="stats-avg-score">{{ stats.avg_opportunity_score }}/100</div>
                     </div>
                     <div class="col-auto">
                         <i class="bi bi-activity fa-2x text-warning fs-3 opacity-50"></i>
@@ -81,7 +81,65 @@
     </div>
 </div>
 
-<!-- Detailed Metrics and Recent Activity Grid -->
+{% if stats.total_businesses == 0 %}
+<!-- Onboarding Empty State layout when SQLite database is newly initialized -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow-sm border-0 bg-white p-5 text-center">
+            <div class="py-4">
+                <div class="rounded-circle bg-primary-subtle d-inline-flex p-4 mb-4 text-primary">
+                    <i class="bi bi-rocket-takeoff-fill fs-1"></i>
+                </div>
+                <h2 class="fw-bold text-dark">Get Started with Company Finder!</h2>
+                <p class="text-muted mx-auto col-lg-8">
+                    Your database is currently empty. This is your personal workspace where you will manage lead pipelines, website opportunity audits, and cold-calling outreach. Let's find your first leads!
+                </p>
+                <div class="d-flex justify-content-center gap-3 mt-4">
+                    <a href="{{ url_for('project.list_projects') }}" class="btn btn-outline-primary px-4">
+                        <i class="bi bi-folder-plus me-2"></i>Create Project Workspace
+                    </a>
+                    <a href="{{ url_for('search.search_form') }}" class="btn btn-primary px-4">
+                        <i class="bi bi-search me-2"></i>Launch First Scan
+                    </a>
+                </div>
+            </div>
+
+            <!-- Helpful workflow cards -->
+            <hr class="my-5">
+            <div class="row g-4 text-start">
+                <div class="col-md-4">
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="fs-3 text-warning bg-warning-subtle px-3 py-1 rounded-circle fw-bold">1</div>
+                        <div>
+                            <h5 class="fw-bold mb-1">Set up Workspaces</h5>
+                            <p class="text-muted small mb-0">Create dedicated Projects to group your outreach (e.g., "Yerevan Dentists" or "Tbilisi Hotels") to keep lead lists cleanly segregated.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="fs-3 text-success bg-success-subtle px-3 py-1 rounded-circle fw-bold">2</div>
+                        <div>
+                            <h5 class="fw-bold mb-1">Crawl Local Businesses</h5>
+                            <p class="text-muted small mb-0">Input industry and city keywords. The Places API pulls names, locations, and phone numbers, while the scanner audits responsive viewports and SSL ports.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="fs-3 text-primary bg-primary-subtle px-3 py-1 rounded-circle fw-bold">3</div>
+                        <div>
+                            <h5 class="fw-bold mb-1">Pitch tailored Solutions</h5>
+                            <p class="text-muted small mb-0">Open a business's profile cockpit. Review technical errors and copy the custom AI sales angle proposal to pitch mobile-responsive overhauls!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<!-- Detailed Metrics and Recent Activity Grid (renders only when actual database rows exist) -->
 <div class="row">
     <!-- Leads Opportunity Analysis -->
     <div class="col-lg-6 mb-4">
@@ -92,28 +150,28 @@
             <div class="card-body d-flex flex-column justify-content-center">
                 <div class="row mb-3">
                     <div class="col-8">No Website at all (Score 100)</div>
-                    <div class="col-4 text-end fw-bold text-danger">{{ stats.no_website_count }} (60%)</div>
+                    <div class="col-4 text-end fw-bold text-danger" id="ratio-no-web-text">{{ stats.no_website_count }} ({{ stats.no_web_ratio }}%)</div>
                     <div class="col-12 mt-1">
                         <div class="progress" style="height: 8px;">
-                            <div class="progress-bar bg-danger" role="progressbar" style="width: 60%"></div>
+                            <div class="progress-bar bg-danger" id="ratio-no-web-bar" role="progressbar" style="width: {{ stats.no_web_ratio }}%"></div>
                         </div>
                     </div>
                 </div>
                 <div class="row mb-3">
                     <div class="col-8">Weak Web Presence (Score 50-99)</div>
-                    <div class="col-4 text-end fw-bold text-warning">{{ stats.weak_website_count }} (29%)</div>
+                    <div class="col-4 text-end fw-bold text-warning" id="ratio-weak-web-text">{{ stats.weak_website_count }} ({{ stats.weak_web_ratio }}%)</div>
                     <div class="col-12 mt-1">
                         <div class="progress" style="height: 8px;">
-                            <div class="progress-bar bg-warning" role="progressbar" style="width: 29%"></div>
+                            <div class="progress-bar bg-warning" id="ratio-weak-web-bar" role="progressbar" style="width: {{ stats.weak_web_ratio }}%"></div>
                         </div>
                     </div>
                 </div>
                 <div class="row">
                     <div class="col-8">Strong Web Presence (Score < 50)</div>
-                    <div class="col-4 text-end fw-bold text-success">{{ stats.total_businesses - stats.no_website_count - stats.weak_website_count }} (11%)</div>
+                    <div class="col-4 text-end fw-bold text-success" id="ratio-strong-web-text">{{ stats.strong_website_count }} ({{ stats.strong_web_ratio }}%)</div>
                     <div class="col-12 mt-1">
                         <div class="progress" style="height: 8px;">
-                            <div class="progress-bar bg-success" role="progressbar" style="width: 11%"></div>
+                            <div class="progress-bar bg-success" id="ratio-strong-web-bar" role="progressbar" style="width: {{ stats.strong_web_ratio }}%"></div>
                         </div>
                     </div>
                 </div>
@@ -126,7 +184,7 @@
         <div class="card shadow-sm h-100">
             <div class="card-header bg-body border-bottom py-3 d-flex justify-content-between align-items-center">
                 <h6 class="m-0 font-weight-bold text-body fw-bold"><i class="bi bi-lightning-charge-fill me-2"></i>High-Value Targets</h6>
-                <button class="btn btn-sm btn-link p-0 text-decoration-none" onclick="showToast('Loading Details', 'Fetching business database details...', 'info')">View All</button>
+                <a class="btn btn-sm btn-link p-0 text-decoration-none" href="{{ url_for('project.list_projects') }}">View Workspaces</a>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -143,21 +201,27 @@
                             <tr>
                                 <td class="ps-3">
                                     <div class="fw-semibold">{{ lead.name }}</div>
-                                    <div class="text-muted small"><i class="bi bi-geo-alt-fill me-1"></i>{{ lead.city }}</div>
+                                    <div class="text-muted small"><i class="bi bi-geo-alt-fill me-1"></i>{{ lead.address }}</div>
                                 </td>
                                 <td>
-                                    {% if lead.score >= 90 %}
-                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle badge-opportunity">{{ lead.score }} - High</span>
-                                    {% elif lead.score >= 50 %}
-                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle badge-opportunity">{{ lead.score }} - Medium</span>
+                                    {% if lead.score %}
+                                        {% if lead.score.opportunity_level == 'Very High' %}
+                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle badge-opportunity">{{ lead.score.score }} - Very High</span>
+                                        {% elif lead.score.opportunity_level == 'High' %}
+                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle badge-opportunity">{{ lead.score.score }} - High</span>
+                                        {% elif lead.score.opportunity_level == 'Medium' %}
+                                            <span class="badge bg-info-subtle text-info border border-info-subtle badge-opportunity">{{ lead.score.score }} - Med</span>
+                                        {% else %}
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle badge-opportunity">{{ lead.score.score }} - Low</span>
+                                        {% endif %}
                                     {% else %}
-                                        <span class="badge bg-success-subtle text-success border border-success-subtle badge-opportunity">{{ lead.score }} - Low</span>
+                                        <span class="badge bg-secondary badge-opportunity">0 - N/A</span>
                                     {% endif %}
                                 </td>
                                 <td class="text-end pe-3">
-                                    <button class="btn btn-sm btn-outline-secondary" onclick="toggleLoader(true); setTimeout(() => toggleLoader(false), 2000)">
-                                        <i class="bi bi-arrow-repeat"></i> Scan
-                                    </button>
+                                    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('business.business_detail', business_id=lead.id) }}">
+                                        <i class="bi bi-pencil-square"></i> Manage
+                                    </a>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -168,4 +232,104 @@
         </div>
     </div>
 </div>
+{% endif %}
+
+<!-- API Places Usage & Pricing Panel -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-body border-bottom py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-body fw-bold">
+                    <i class="bi bi-cpu-fill me-2 text-primary"></i>Google Places API Usage & Budget Monitor
+                </h6>
+                <button class="btn btn-sm btn-outline-secondary" onclick="refreshUsageSummary()" title="Refresh live usage tracking logs">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <!-- Free Requests Remaining -->
+                    <div class="col-md-4 text-center border-end">
+                        <div class="text-muted small text-uppercase font-monospace mb-1">
+                            Free Requests Remaining
+                            <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-placement="top"
+                               id="pricing-source-tooltip"
+                               title="{% if is_fallback %}⚠️ Fallback pricing active{% else %}Live pricing as of {{ last_fetched_str }}{% endif %}">
+                            </i>
+                        </div>
+                        <div class="h3 mb-0 fw-bold {% if usage.estimated_free_requests_remaining == 0 %}text-danger{% else %}text-success{% endif %}" id="usage-free-remaining">
+                            {{ usage.estimated_free_requests_remaining }}
+                        </div>
+                        <div class="form-text mt-1 text-muted" style="font-size: 0.75rem;">
+                            Est. based on worst-case Details request costs.
+                        </div>
+                    </div>
+
+                    <!-- Requests This Month -->
+                    <div class="col-md-4 text-center border-end">
+                        <div class="text-muted small text-uppercase font-monospace mb-1">Requests This Month</div>
+                        <div class="h3 mb-0 fw-bold text-body" id="usage-month-count">
+                            {{ usage.request_count }}
+                        </div>
+                        <div class="form-text mt-1 text-muted" style="font-size: 0.75rem;">
+                            Total Place Details queries logged in YYYY-MM context.
+                        </div>
+                    </div>
+
+                    <!-- Total Requests (All Time) -->
+                    <div class="col-md-4 text-center">
+                        <div class="text-muted small text-uppercase font-monospace mb-1">Total Requests (All Time)</div>
+                        <div class="h3 mb-0 fw-bold text-body" id="usage-all-time-count">
+                            {{ all_time_requests }}
+                        </div>
+                        <div class="form-text mt-1 text-muted" style="font-size: 0.75rem;">
+                            Total transaction counts registered since setup.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- AJAX Stats Auto-Refresh script -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize bootstrap tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+
+function refreshUsageSummary() {
+    fetch('/search/api/usage/summary')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                // 1. Update Remaining Requests
+                const freeRemaining = document.getElementById('usage-free-remaining');
+                freeRemaining.textContent = data.estimated_free_requests_remaining;
+                freeRemaining.className = data.estimated_free_requests_remaining === 0 ? "h3 mb-0 fw-bold text-danger" : "h3 mb-0 fw-bold text-success";
+
+                // 2. Update Counts
+                document.getElementById('usage-month-count').textContent = data.request_count;
+                document.getElementById('usage-all-time-count').textContent = data.total_all_time_requests;
+
+                // 3. Update Tooltip
+                const tooltipEl = document.getElementById('pricing-source-tooltip');
+                if (tooltipEl) {
+                    const tooltipText = data.is_fallback ? "⚠️ Fallback pricing active" : `Live pricing cached (${data.cache_age_seconds}s age)`;
+                    tooltipEl.setAttribute('data-bs-original-title', tooltipText);
+                    // Re-initialize bootstrap tooltip
+                    bootstrap.Tooltip.getInstance(tooltipEl).setContent({ '.tooltip-inner': tooltipText });
+                }
+                showToast("Stats Refreshed", "Usage logs and remaining free tier estimates successfully synchronized.", "success");
+            }
+        })
+        .catch(err => {
+            console.error("Failed to fetch API usage summary:", err);
+        });
+}
+</script>
 {% endblock %}

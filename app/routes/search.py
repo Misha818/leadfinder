@@ -101,17 +101,8 @@ def run_search():
 
 @search_bp.route('/results/<int:search_id>')
 def results_dashboard(search_id):
-    """Executes the search via SearchService if pending, then displays results inside a data table."""
+    """Displays results dashboard inside a data table, triggering client-side scans if pending."""
     search = db.get_or_404(Search, search_id)
-
-    # Run the scraping and scoring engine if search transaction is not completed
-    if search.status != 'completed':
-        search_service = SearchService()
-        try:
-            search_service.execute_and_score(search.id)
-        except Exception as e:
-            flash(f"An error occurred while scanning and scoring leads: {str(e)}", "danger")
-            return redirect(url_for('search.search_form'))
 
     # Query matching scored business leads
     leads = Business.query.filter_by(search_id=search.id).all()
@@ -121,6 +112,42 @@ def results_dashboard(search_id):
     if leads:
         total_scores = sum(lead.score.score for lead in leads if lead.score)
         avg_score = int(total_scores / len(leads))
+
+    return render_template(
+        'search_results.html',
+        search=search,
+        leads=leads,
+        avg_score=avg_score,
+        filters=search.filters
+    )
+
+
+@search_bp.route('/execute/<int:search_id>', methods=['POST'])
+def execute_search_api(search_id):
+    """AJAX API endpoint executing the lead scan and scoring pipeline with billing checks."""
+    search = db.get_or_404(Search, search_id)
+
+    # Check for user-approved authorization headers
+    user_approved = request.headers.get('X-User-Approved') == 'true'
+    from app.services.search_service import BillingApprovalRequiredError
+
+    search_service = SearchService(user_approved=user_approved)
+    try:
+        search_service.execute_and_score(search.id)
+        return {
+            "success": True,
+            "count": search.results_count,
+            "status": "completed"
+        }
+    except BillingApprovalRequiredError as e:
+        # Return HTTP 402 Payment Required indicating credit exhaustion
+        return {
+            "status": "approval_required",
+            "estimated_cost_usd": e.estimated_cost_usd,
+            "message": str(e)
+        }, 402
+    except Exception as e:
+        return {"success": False, "error": str(e)}, 500
 
     return render_template(
         'search_results.html',
@@ -319,3 +346,42 @@ def delete_search(search_id):
         flash(f"Database error while deleting search log: {str(e)}", "danger")
 
     return redirect(url_for('search.search_history'))
+
+
+@search_bp.route('/api/billing/prices')
+def billing_prices_api():
+    """Returns currently cached Google Places unit SKU prices and limits as JSON."""
+    from app.services.billing_service import get_billing_cache_status
+    status = get_billing_cache_status()
+    return {
+        "success": True,
+        "prices": status["prices"],
+        "free_credit": status["free_credit"],
+        "cache_age_seconds": status["cache_age_seconds"],
+        "is_fallback": status["is_fallback"]
+    }
+
+
+@search_bp.route('/api/usage/summary')
+def usage_summary_api():
+    """Returns API usage statistics and remaining free requests/credits as JSON."""
+    from datetime import datetime
+    from app.services.billing_service import get_monthly_usage, get_all_time_request_count, get_billing_cache_status
+    current_month = datetime.utcnow().strftime("%Y-%m")
+    usage = get_monthly_usage(current_month)
+    all_time = get_all_time_request_count()
+    cache = get_billing_cache_status()
+
+    return {
+        "success": True,
+        "billing_month": usage["billing_month"],
+        "request_count": usage["request_count"],
+        "total_spent_usd": usage["total_spent_usd"],
+        "free_credit_limit_usd": usage["free_credit_limit_usd"],
+        "remaining_free_credit_usd": usage["remaining_free_credit_usd"],
+        "estimated_free_requests_remaining": usage["estimated_free_requests_remaining"],
+        "is_within_free_tier": usage["is_within_free_tier"],
+        "total_all_time_requests": all_time,
+        "is_fallback": cache["is_fallback"],
+        "cache_age_seconds": cache["cache_age_seconds"]
+    }

@@ -1,4 +1,4 @@
-// Company Finder UI Management
+// Company Finder Unified Client-Side Engine
 
 document.addEventListener('DOMContentLoaded', () => {
     // ----------------------------------------------------
@@ -54,10 +54,114 @@ document.addEventListener('DOMContentLoaded', () => {
             sidebar.classList.remove('show');
         });
     }
+
+    // ----------------------------------------------------
+    // 3. Automated Search Execution Background Crawler (results page only)
+    // ----------------------------------------------------
+    // If we are on the search results view page and the status is pending
+    const resultsPageCheck = document.getElementById('leads-table');
+    if (resultsPageCheck && window.location.pathname.includes('/search/results/')) {
+        const pathSegments = window.location.pathname.split('/');
+        const searchId = pathSegments[pathSegments.length - 1];
+
+        // We check if the database has 0 leads and search needs execution
+        // We trigger the execute API call automatically!
+        const rows = document.querySelectorAll('.lead-row');
+        if (rows.length === 0) {
+            triggerSearchCrawl(searchId);
+        }
+    }
 });
 
 // ----------------------------------------------------
-// 3. Helper Utility Functions (Toasts and Loader)
+// 4. Billing Approval Modal AJAX Interceptor
+// ----------------------------------------------------
+let pendingSearchRequest = null; // Stash search ID during modal auth flows
+
+function triggerSearchCrawl(searchId, userApproved = false) {
+    toggleLoader(true, "Initializing Google Places B2B Crawls & Real Website Scrapes...");
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (userApproved) {
+        headers['X-User-Approved'] = 'true';
+    }
+
+    fetch(`/search/execute/${searchId}`, {
+        method: 'POST',
+        headers: headers
+    })
+    .then(response => {
+        if (response.status === 402) {
+            // Credit Exhausted! Intercept payment required and launch modal
+            pendingSearchRequest = searchId;
+            launchBillingModal();
+            return null;
+        } else if (!response.ok) {
+            return response.json().then(err => { throw new Error(err.error || "Crawl transaction failed.") });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data && data.success) {
+            toggleLoader(false);
+            showToast("Scan Complete", `Successfully crawled and scored ${data.count} leads inside SQLite!`, "success");
+            // Reload page to render table leads cleanly
+            setTimeout(() => window.location.reload(), 1500);
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        toggleLoader(false);
+        showToast("Crawler Error", err.message || "Network error launching B2B lead crawling services.", "danger");
+    });
+}
+
+function launchBillingModal() {
+    toggleLoader(false); // Hide spinner during prompt modal
+
+    const modalEl = document.getElementById('billingApprovalModal');
+    const modal = new bootstrap.Modal(modalEl);
+
+    // Fetch live prices to show estimated cost
+    fetch('/search/api/billing/prices')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                // Calculation: sum worst case cost
+                const basic = parseFloat(data.prices.basic || 0.017);
+                const contact = parseFloat(data.prices.contact || 0.003);
+                const atmosphere = parseFloat(data.prices.atmosphere || 0.005);
+                const totalCost = (basic + contact + atmosphere).toFixed(3);
+
+                document.getElementById('modal-estimated-cost').textContent = `$${totalCost} USD`;
+            }
+        })
+        .catch(err => {
+            console.error("Failed to load live price tooltips:", err);
+            document.getElementById('modal-estimated-cost').textContent = "$0.025 USD"; // Fallback estimation
+        })
+        .finally(() => {
+            modal.show();
+
+            // Handle Cancel and Approve buttons
+            document.getElementById('btn-billing-cancel').onclick = () => {
+                modal.hide();
+                showToast("Crawl Aborted", "Lead discovery canceled by user.", "warning");
+                pendingSearchRequest = null;
+            };
+
+            document.getElementById('btn-billing-approve').onclick = () => {
+                modal.hide();
+                if (pendingSearchRequest) {
+                    triggerSearchCrawl(pendingSearchRequest, true); // Re-run search with approved flag!
+                    pendingSearchRequest = null;
+                }
+            };
+        });
+}
+
+// ----------------------------------------------------
+// 5. Helper Utility Functions (Toasts and Loader)
 // ----------------------------------------------------
 
 /**

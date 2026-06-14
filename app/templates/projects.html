@@ -94,4 +94,18 @@
         </div>
     </div>
 </div>
+
+<!-- Auto-trigger Creation Modal script if '?new=true' query param is present -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('new') === 'true') {
+        const modalEl = document.getElementById('newProjectModal');
+        if (modalEl) {
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+        }
+    }
+});
+</script>
 {% endblock %}

@@ -65,34 +65,36 @@
     <div class="col-lg-8 mb-4">
         <!-- Opportunity Pitch Card -->
         <div class="card shadow-sm border-0 mb-4">
-            <div class="card-header bg-body border-bottom py-3">
-                <h5 class="m-0 font-weight-bold text-primary"><i class="bi bi-lightning-charge-fill me-2"></i>Sales Opportunity Audit</h5>
+            <div class="card-header bg-body border-bottom py-3 d-flex justify-content-between align-items-center">
+                <h5 class="m-0 font-weight-bold text-primary mb-0"><i class="bi bi-lightning-charge-fill me-2"></i>Sales Opportunity Audit</h5>
+                {% if business.website_url %}
+                    <button id="reaudit-btn" class="btn btn-sm btn-outline-primary shadow-none" onclick="triggerLiveReaudit('{{ business.id }}')">
+                        <i class="bi bi-arrow-repeat me-1"></i> Re-Audit Website
+                    </button>
+                {% endif %}
             </div>
             <div class="card-body">
                 {% if score %}
-                    <!-- Scoring alerts -->
-                    {% if score.opportunity_level == 'Very High' %}
-                        <div class="alert alert-danger border-0 d-flex gap-3 align-items-start p-3" role="alert">
+                    <!-- Scoring alerts with ID wrappers for AJAX dynamic swaps -->
+                    <div id="score-alert-box" class="alert {% if score.opportunity_level == 'Very High' %}alert-danger{% elif score.opportunity_level == 'High' %}alert-warning{% elif score.opportunity_level == 'Medium' %}alert-info{% else %}alert-success{% endif %} border-0 d-flex gap-3 align-items-start p-3" role="alert">
+                        {% if score.opportunity_level == 'Very High' %}
                             <i class="bi bi-fire fs-2 text-danger"></i>
-                    {% elif score.opportunity_level == 'High' %}
-                        <div class="alert alert-warning border-0 d-flex gap-3 align-items-start p-3" role="alert">
+                        {% elif score.opportunity_level == 'High' %}
                             <i class="bi bi-exclamation-triangle-fill fs-2 text-warning"></i>
-                    {% elif score.opportunity_level == 'Medium' %}
-                        <div class="alert alert-info border-0 d-flex gap-3 align-items-start p-3" role="alert">
+                        {% elif score.opportunity_level == 'Medium' %}
                             <i class="bi bi-info-circle-fill fs-2 text-info"></i>
-                    {% else %}
-                        <div class="alert alert-success border-0 d-flex gap-3 align-items-start p-3" role="alert">
+                        {% else %}
                             <i class="bi bi-check-circle-fill fs-2 text-success"></i>
-                    {% endif %}
+                        {% endif %}
                         <div>
-                            <h5 class="alert-heading fw-bold mb-1">{{ score.opportunity_level }} B2B Opportunity Score ({{ score.score }}/100)</h5>
-                            <p class="mb-0 small">{{ score.explanation }}</p>
+                            <h5 class="alert-heading fw-bold mb-1" id="score-alert-heading">{{ score.opportunity_level }} B2B Opportunity Score ({{ score.score }}/100)</h5>
+                            <p class="mb-0 small" id="score-alert-explanation">{{ score.explanation }}</p>
                         </div>
                     </div>
 
                     <div class="card bg-light border-0 p-3 mb-3">
                         <h6 class="fw-bold mb-1 text-primary"><i class="bi bi-award-fill me-1"></i>Pitch Strategy & Recommended Sales Angle:</h6>
-                        <p class="mb-0 text-muted small">{{ score.sales_angle }}</p>
+                        <p class="mb-0 text-muted small" id="score-sales-angle">{{ score.sales_angle }}</p>
                     </div>
 
                     <!-- AI-Assisted Pitch Analyst Recommendation -->
@@ -101,12 +103,12 @@
                             <div class="d-flex align-items-center justify-content-between border-bottom pb-2 mb-3">
                                 <h6 class="card-title fw-bold mb-0" style="color: #6f42c1;"><i class="bi bi-robot me-2"></i>AI Pitch Analyst Consultation</h6>
                                 <div class="d-flex gap-2">
-                                    <span class="badge" style="background-color: #f1f0fc; color: #6f42c1;">Complexity: {{ ai_analysis.complexity }}</span>
-                                    <span class="badge" style="background-color: #e2f0fd; color: #0d6efd;">Value Tier: {{ ai_analysis.value_category }}</span>
+                                    <span class="badge" style="background-color: #f1f0fc; color: #6f42c1;" id="ai-complexity">Complexity: {{ ai_analysis.complexity }}</span>
+                                    <span class="badge" style="background-color: #e2f0fd; color: #0d6efd;" id="ai-value">Value Tier: {{ ai_analysis.value_category }}</span>
                                 </div>
                             </div>
                             <p class="card-text small mb-1 fw-bold text-muted">Core Proposed Services:</p>
-                            <p class="card-text small text-dark mb-0">{{ ai_analysis.recommended_services }}</p>
+                            <p class="card-text small text-dark mb-0" id="ai-services">{{ ai_analysis.recommended_services }}</p>
                         </div>
                     </div>
 
@@ -117,35 +119,27 @@
                             <ul class="list-group list-group-flush small bg-transparent">
                                 <li class="list-group-item bg-transparent px-0 d-flex justify-content-between align-items-center">
                                     <span>Has Website:</span>
-                                    {% if score.has_website %}
-                                        <span class="badge bg-success">Yes</span>
-                                    {% else %}
-                                        <span class="badge bg-danger">No</span>
-                                    {% endif %}
+                                    <span id="metric-has-website" class="badge {% if score.has_website %}bg-success{% else %}bg-danger{% endif %}">
+                                        {% if score.has_website %}Yes{% else %}No{% endif %}
+                                    </span>
                                 </li>
                                 <li class="list-group-item bg-transparent px-0 d-flex justify-content-between align-items-center">
                                     <span>Mobile Responsive:</span>
-                                    {% if score.is_responsive %}
-                                        <span class="badge bg-success">Yes</span>
-                                    {% else %}
-                                        <span class="badge bg-danger">No</span>
-                                    {% endif %}
+                                    <span id="metric-is-responsive" class="badge {% if score.is_responsive %}bg-success{% else %}bg-danger{% endif %}">
+                                        {% if score.is_responsive %}Yes{% else %}No{% endif %}
+                                    </span>
                                 </li>
                                 <li class="list-group-item bg-transparent px-0 d-flex justify-content-between align-items-center">
                                     <span>SSL Certificate Active:</span>
-                                    {% if score.has_ssl %}
-                                        <span class="badge bg-success">Secure (HTTPS)</span>
-                                    {% else %}
-                                        <span class="badge bg-danger">Insecure (HTTP)</span>
-                                    {% endif %}
+                                    <span id="metric-has-ssl" class="badge {% if score.has_ssl %}bg-success{% else %}bg-danger{% endif %}">
+                                        {% if score.has_ssl %}Secure (HTTPS){% else %}Insecure (HTTP){% endif %}
+                                    </span>
                                 </li>
                                 <li class="list-group-item bg-transparent px-0 d-flex justify-content-between align-items-center">
                                     <span>Loading Speed:</span>
-                                    {% if score.has_website %}
-                                        <span class="fw-bold text-{{ 'danger' if score.load_time_seconds > 3.0 else 'success' }}">{{ score.load_time_seconds }} seconds</span>
-                                    {% else %}
-                                        <span class="text-muted">N/A</span>
-                                    {% endif %}
+                                    <span id="metric-load-time" class="fw-bold text-{{ 'danger' if score.load_time_seconds > 3.0 else 'success' }}">
+                                        {% if score.has_website %}{{ score.load_time_seconds }} seconds{% else %}N/A{% endif %}
+                                    </span>
                                 </li>
                             </ul>
                         </div>
@@ -154,15 +148,13 @@
                             <ul class="list-group list-group-flush small bg-transparent">
                                 <li class="list-group-item bg-transparent px-0 d-flex justify-content-between align-items-center">
                                     <span>SEO Meta Title:</span>
-                                    {% if score.seo_title_present %}
-                                        <span class="badge bg-success">Detected</span>
-                                    {% else %}
-                                        <span class="badge bg-danger">Missing / Empty</span>
-                                    {% endif %}
+                                    <span id="metric-seo-title" class="badge {% if score.seo_title_present %}bg-success{% else %}bg-danger{% endif %}">
+                                        {% if score.seo_title_present %}Detected{% else %}Missing / Empty{% endif %}
+                                    </span>
                                 </li>
                                 <li class="list-group-item bg-transparent px-0 d-flex justify-content-between align-items-center">
                                     <span>Social Channels Count:</span>
-                                    <span class="fw-bold">{{ score.social_links_count }} channels</span>
+                                    <span id="metric-social-links" class="fw-bold">{{ score.social_links_count }} channels</span>
                                 </li>
                                 <li class="list-group-item bg-transparent px-0 d-flex justify-content-between align-items-center">
                                     <span>Public Email Listed:</span>
@@ -170,7 +162,7 @@
                                 </li>
                                 <li class="list-group-item bg-transparent px-0 d-flex justify-content-between align-items-center">
                                     <span>Last Scan Run:</span>
-                                    <span class="text-muted">{{ score.last_scanned_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                                    <span id="metric-last-scan" class="text-muted">{{ score.last_scanned_at.strftime('%Y-%m-%d %H:%M') }}</span>
                                 </li>
                             </ul>
                         </div>
@@ -328,4 +320,125 @@
         </div>
     </div>
 </div>
+
+<!-- AJAX Re-Audit Client-side Engine -->
+<script>
+function triggerLiveReaudit(businessId) {
+    const btn = document.getElementById('reaudit-btn');
+    if (!btn) return;
+
+    const originalHTML = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Crawling...';
+
+    fetch(`/business/api/business/${businessId}/audit`)
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(errData => { throw new Error(errData.error || "Scraper response returned error code.") });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // 1. Update Opportunity Score Alerts
+                const alertBox = document.getElementById('score-alert-box');
+                const alertHeading = document.getElementById('score-alert-heading');
+                const explanation = document.getElementById('score-alert-explanation');
+                const salesAngle = document.getElementById('score-sales-angle');
+
+                // Clear styling classes
+                alertBox.className = "alert border-0 d-flex gap-3 align-items-start p-3 ";
+                const icon = alertBox.querySelector('i');
+
+                if (data.opportunity_level === 'Very High') {
+                    alertBox.classList.add('alert-danger');
+                    if (icon) icon.className = "bi bi-fire fs-2 text-danger";
+                } else if (data.opportunity_level === 'High') {
+                    alertBox.classList.add('alert-warning');
+                    if (icon) icon.className = "bi bi-exclamation-triangle-fill fs-2 text-warning";
+                } else if (data.opportunity_level === 'Medium') {
+                    alertBox.classList.add('alert-info');
+                    if (icon) icon.className = "bi bi-info-circle-fill fs-2 text-info";
+                } else {
+                    alertBox.classList.add('alert-success');
+                    if (icon) icon.className = "bi bi-check-circle-fill fs-2 text-success";
+                }
+
+                alertHeading.innerHTML = `${data.opportunity_level} B2B Opportunity Score (${data.score}/100)`;
+                explanation.textContent = data.explanation;
+                salesAngle.textContent = data.sales_angle;
+
+                // 2. Update Checklist details in-place
+                const hasWebsite = document.getElementById('metric-has-website');
+                const isResponsive = document.getElementById('metric-is-responsive');
+                const hasSsl = document.getElementById('metric-has-ssl');
+                const loadTime = document.getElementById('metric-load-time');
+                const seoTitle = document.getElementById('metric-seo-title');
+                const socialLinks = document.getElementById('metric-social-links');
+                const lastScan = document.getElementById('metric-last-scan');
+
+                updateBadge(hasWebsite, data.has_website, "Yes", "No");
+                updateBadge(isResponsive, data.is_responsive, "Yes", "No");
+                updateBadge(hasSsl, data.has_ssl, "Secure (HTTPS)", "Insecure (HTTP)");
+
+                if (data.has_website) {
+                    loadTime.textContent = `${data.load_time_seconds} seconds`;
+                    loadTime.className = data.load_time_seconds > 3.0 ? "fw-bold text-danger" : "fw-bold text-success";
+                } else {
+                    loadTime.textContent = "N/A";
+                    loadTime.className = "text-muted";
+                }
+
+                updateBadge(seoTitle, data.seo_title_present, "Detected", "Missing / Empty");
+                socialLinks.textContent = `${data.social_links_count} channels`;
+                lastScan.textContent = data.last_scanned_at;
+
+                // 3. Update AI analyst indicators in-place
+                const aiComplexity = document.getElementById('ai-complexity');
+                const aiValue = document.getElementById('ai-value');
+                const aiServices = document.getElementById('ai-services');
+
+                // Recalculate dynamic AI variables based on score
+                let complexity = "Medium";
+                let value = "Medium";
+                let services = "Website Redesign & Modernization, SSL certificate deployment, PageSpeed loading optimizations, and mobile-responsive CSS refactoring.";
+
+                if (!data.has_website) {
+                    complexity = "Medium"; value = "Large";
+                    services = "Full-stack Custom Website Development, responsive layouts, local SEO structuring, Google Business profile optimization, and online contact forms.";
+                } else if (data.score >= 70) {
+                    complexity = "Medium"; value = "Medium";
+                } else if (data.score >= 40) {
+                    complexity = "Low"; value = "Small";
+                    services = "HTTPS Migration (SSL Certificate), basic responsive view tweaks, SEO meta title injections, and social sharing links integration.";
+                } else {
+                    complexity = "High"; value = "Medium";
+                    services = "Conversion rate optimizations, advanced programmatic local SEO expansions, and managed marketing lead generation campaigns.";
+                }
+
+                aiComplexity.textContent = `Complexity: ${complexity}`;
+                aiValue.textContent = `Value Tier: ${value}`;
+                aiServices.textContent = services;
+
+                showToast("Re-Audit Succeeded", `Lead score was dynamically updated to ${data.score}/100!`, "success");
+            } else {
+                showToast("Scraper Failed", data.error || "Could not resolve URL crawler requests.", "danger");
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            showToast("Connection Error", err.message || "Failed to make live AJAX requests to your local server.", "danger");
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = originalHTML;
+        });
+}
+
+function updateBadge(el, val, trueText, falseText) {
+    if (!el) return;
+    el.textContent = val ? trueText : falseText;
+    el.className = `badge ${val ? 'bg-success' : 'bg-danger'}`;
+}
+</script>
 {% endblock %}

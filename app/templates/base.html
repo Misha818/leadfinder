@@ -51,7 +51,7 @@
                 </a>
             </li>
             <li>
-                <a href="#" class="sidebar-link">
+                <a href="{{ url_for('main.list_businesses') }}" class="sidebar-link {% if request.endpoint == 'main.list_businesses' %}active{% endif %}">
                     <i class="bi bi-briefcase-fill me-2"></i> Businesses
                 </a>
             </li>
@@ -84,11 +84,11 @@
                         <i class="bi bi-list"></i>
                     </button>
 
-                    <!-- Search Bar Header -->
-                    <form class="d-none d-sm-flex" role="search">
+                    <!-- Search Bar Header (Wired for global lead search queries) -->
+                    <form class="d-none d-sm-flex" action="{{ url_for('main.list_businesses') }}" method="GET" role="search">
                         <div class="input-group">
                             <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-search"></i></span>
-                            <input class="form-control bg-light border-start-0 ps-0" type="search" placeholder="Quick search leads..." aria-label="Search">
+                            <input class="form-control bg-light border-start-0 ps-0" type="search" name="q" placeholder="Quick search leads..." aria-label="Search" value="{{ query_param or '' }}">
                         </div>
                     </form>
                 </div>
@@ -99,8 +99,8 @@
                             <i class="bi bi-plus-lg"></i> Quick Action
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="#"><i class="bi bi-folder-plus me-2"></i>New Project</a></li>
-                            <li><a class="dropdown-item" href="#"><i class="bi bi-search me-2"></i>New Search</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('project.list_projects', new='true') }}"><i class="bi bi-folder-plus me-2"></i>New Project</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('search.search_form') }}"><i class="bi bi-search me-2"></i>New Search</a></li>
                         </ul>
                     </div>
                 </div>
@@ -124,6 +124,26 @@
             </div>
             <div id="toast-body" class="toast-body">
                 Welcome to Company Finder!
+            </div>
+        </div>
+    </div>
+
+    <!-- Billing Approval Modal -->
+    <div class="modal fade" id="billingApprovalModal" tabindex="-1" aria-labelledby="billingApprovalModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-warning-subtle text-warning-emphasis py-3">
+                    <h5 class="modal-title fw-bold" id="billingApprovalModalLabel"><i class="bi bi-wallet2 me-2"></i>Free Credit Exhausted</h5>
+                </div>
+                <div class="modal-body py-4">
+                    <p class="mb-3">Your monthly Google Places free credit has been used.</p>
+                    <p class="mb-3">This request will be billed at an estimated cost of <strong class="text-danger" id="modal-estimated-cost">$0.00</strong>.</p>
+                    <p class="mb-0 fw-semibold text-muted small">Do you want to proceed with this request?</p>
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-light btn-sm" id="btn-billing-cancel" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary btn-sm" id="btn-billing-approve"><i class="bi bi-shield-check me-1"></i>Approve & Continue</button>
+                </div>
             </div>
         </div>
     </div>

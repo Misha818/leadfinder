@@ -6,6 +6,9 @@ from app.models import db
 
 def create_app(config_class=Config):
     """Application factory for Company Finder."""
+    # Conduct configurations validation checks on startup
+    config_class.validate()
+
     # Configure production-ready server logs
     logging.basicConfig(
         level=logging.INFO,

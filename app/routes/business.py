@@ -111,3 +111,73 @@ def add_contact_log(business_id):
         flash("Outreach contact method is required!", "warning")
 
     return redirect(url_for('business.business_detail', business_id=business.id))
+
+
+@business_bp.route('/api/business/<int:business_id>/audit')
+def live_reaudit_api(business_id):
+    """
+    Exposes a real-time JSON API executing on-demand HTTP/HTTPS audits
+    and saving updated scoring metrics to local SQLite tables.
+    """
+    business = Business.query.get_or_404(business_id)
+
+    try:
+        from app.services.scraper_service import audit_website
+        from app.services.scoring_service import ScoringService
+
+        # 1. Run live crawler
+        audit = audit_website(business.website_url)
+
+        # Build lead dict reference for potential demand calculations
+        lead_dict = {
+            "name": business.name,
+            "phone": business.phone,
+            "email": business.email,
+            "website_url": business.website_url,
+            "rating": 4.5,  # static reference fallbacks
+            "reviews_count": 120
+        }
+
+        # 2. Re-calculate score driven by actual scraper outputs
+        score, level, explanation, sales_angle = ScoringService.calculate_advanced_score(lead_dict, audit)
+
+        # 3. Save / Update corresponding scored leads rows inside SQLite database
+        score_record = business.score
+        if not score_record:
+            score_record = BusinessScore(business_id=business.id)
+            db.session.add(score_record)
+
+        score_record.score = score
+        score_record.opportunity_level = level
+        score_record.explanation = explanation
+        score_record.sales_angle = sales_angle
+        score_record.has_website = audit.get("has_website", False)
+        score_record.is_responsive = audit.get("is_responsive", False)
+        score_record.has_ssl = audit.get("has_ssl", False)
+        score_record.load_time_seconds = audit.get("load_time_seconds", 0.0)
+        score_record.seo_title_present = True if audit.get("seo_title") else False
+        score_record.social_links_count = audit.get("social_links_count", 0)
+        score_record.last_scanned_at = datetime.utcnow()
+
+        db.session.commit()
+        logger.info(f"On-demand live web re-audit succeeded for Biz ID {business_id}. New score: {score}")
+
+        return {
+            "success": True,
+            "score": score,
+            "opportunity_level": level,
+            "explanation": explanation,
+            "sales_angle": sales_angle,
+            "has_website": score_record.has_website,
+            "is_responsive": score_record.is_responsive,
+            "has_ssl": score_record.has_ssl,
+            "load_time_seconds": score_record.load_time_seconds,
+            "seo_title_present": score_record.seo_title_present,
+            "social_links_count": score_record.social_links_count,
+            "cms_fingerprint": audit.get("cms_fingerprint", "Unknown"),
+            "last_scanned_at": score_record.last_scanned_at.strftime('%Y-%m-%d %H:%M')
+        }
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error executing live re-audit API for Biz ID {business_id}: {str(e)}")
+        return {"success": False, "error": str(e)}, 500

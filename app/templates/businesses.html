@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+
+{% block title %}Lead Directory | Company Finder{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-md-6">
+        <h1 class="h3 mb-0 text-gray-800"><i class="bi bi-briefcase-fill me-2 text-primary"></i>Businesses Directory</h1>
+        <p class="text-muted mb-0">
+            {% if query_param %}
+                Search results for keyword "<strong>{{ query_param }}</strong>" across all workspaces.
+            {% else %}
+                Unified directory listing of all scraped and scored business leads across active project workspaces.
+            {% endif %}
+        </p>
+    </div>
+    <div class="col-md-6 text-md-end mt-3 mt-md-0">
+        <a href="{{ url_for('search.search_form') }}" class="btn btn-primary shadow-sm">
+            <i class="bi bi-search me-2"></i> Find New Leads
+        </a>
+    </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<!-- Directory Table Card -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-body border-bottom py-3 d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2">
+        <h6 class="m-0 font-weight-bold text-body fw-bold"><i class="bi bi-table me-2 text-primary"></i>All Saved Businesses</h6>
+        <!-- Local Search filter -->
+        <div class="col-xs-12 col-sm-4">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-funnel"></i></span>
+                <input type="text" id="directory-search" class="form-control bg-light border-start-0 ps-0" placeholder="Filter current view...">
+            </div>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="directory-table">
+                <thead class="table-light text-uppercase fs-7">
+                    <tr>
+                        <th class="ps-3 border-0 sortable" data-sort="name">Business Name <i class="bi bi-arrow-down-up ms-1 small opacity-50"></i></th>
+                        <th class="border-0 sortable" data-sort="workspace">Workspace Project <i class="bi bi-arrow-down-up ms-1 small opacity-50"></i></th>
+                        <th class="border-0 text-center">Phone</th>
+                        <th class="border-0 text-center">Web Status</th>
+                        <th class="border-0 sortable text-center" data-sort="score">Opportunity Score <i class="bi bi-arrow-down-up ms-1 small opacity-50"></i></th>
+                        <th class="border-0 text-end pe-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lead in leads %}
+                    <tr class="directory-row">
+                        <td class="ps-3">
+                            <div class="fw-bold text-body mb-0">{{ lead.name }}</div>
+                            <div class="text-muted small"><i class="bi bi-geo-alt-fill me-1 text-danger"></i>{{ lead.address or 'Address not listed' }}</div>
+                        </td>
+                        <td>
+                            <div class="fw-semibold small"><i class="bi bi-folder2 text-warning me-1"></i>{{ lead.project.name }}</div>
+                            <div class="text-muted small font-monospace" style="font-size: 0.75rem;">ID: #{{ lead.project_id }}</div>
+                        </td>
+                        <td class="text-center small">{{ lead.phone or '<span class="text-danger">No Phone</span>'|safe }}</td>
+                        <td class="text-center">
+                            {% if lead.score and lead.score.has_website %}
+                                {% if lead.score.has_ssl and lead.score.is_responsive %}
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle" title="SSL Active, Mobile-friendly"><i class="bi bi-check-circle-fill me-1"></i>Optimized</span>
+                                {% else %}
+                                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle" title="Deficient loading or SSL issues"><i class="bi bi-exclamation-triangle-fill me-1"></i>Deficient</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle" title="Completely lacks website"><i class="bi bi-globe-slash me-1"></i>No Website</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if lead.score %}
+                                {% if lead.score.opportunity_level == 'Very High' %}
+                                    <span class="badge bg-danger text-white fs-7 py-2 px-3 fw-bold" style="min-width: 140px;" data-raw-score="{{ lead.score.score }}">{{ lead.score.score }} - Very High</span>
+                                {% elif lead.score.opportunity_level == 'High' %}
+                                    <span class="badge bg-warning text-dark fs-7 py-2 px-3 fw-bold" style="min-width: 140px;" data-raw-score="{{ lead.score.score }}">{{ lead.score.score }} - High</span>
+                                {% elif lead.score.opportunity_level == 'Medium' %}
+                                    <span class="badge bg-info text-dark fs-7 py-2 px-3 fw-bold" style="min-width: 140px;" data-raw-score="{{ lead.score.score }}">{{ lead.score.score }} - Medium</span>
+                                {% else %}
+                                    <span class="badge bg-success text-white fs-7 py-2 px-3 fw-bold" style="min-width: 140px;" data-raw-score="{{ lead.score.score }}">{{ lead.score.score }} - Low</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge bg-secondary" data-raw-score="0">0 - None</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-3">
+                            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('business.business_detail', business_id=lead.id) }}">
+                                <i class="bi bi-pencil-square"></i> Manage
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5 text-muted">
+                            <i class="bi bi-briefcase fs-1"></i>
+                            <p class="mt-2 fw-semibold">No businesses exist inside the directory.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination footer -->
+        <div class="card-footer bg-body border-top py-3 d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2">
+            <span class="text-muted small" id="directory-status">Showing 1 to 10 of {{ leads|length }} leads</span>
+            <nav>
+                <ul class="pagination pagination-sm mb-0" id="directory-pagination">
+                    <!-- Injected by client-side JS -->
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<!-- Local Script for sorting and filtering -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('directory-search');
+    const table = document.getElementById('directory-table');
+    const rows = Array.from(table.querySelectorAll('tbody tr.directory-row'));
+    const paginationControls = document.getElementById('directory-pagination');
+    const paginationStatus = document.getElementById('directory-status');
+    const sortHeaders = table.querySelectorAll('thead th.sortable');
+
+    let filteredRows = [...rows];
+    let currentPage = 1;
+    const itemsPerPage = 10;
+    let sortDirection = {};
+
+    // 1. Searching
+    searchInput.addEventListener('input', () => {
+        const query = searchInput.value.toLowerCase().trim();
+        filteredRows = rows.filter(row => row.textContent.toLowerCase().includes(query));
+        currentPage = 1;
+        renderTable();
+    });
+
+    // 2. Sorting
+    sortHeaders.forEach(header => {
+        header.addEventListener('click', () => {
+            const sortBy = header.getAttribute('data-sort');
+            const direction = sortDirection[sortBy] === 'asc' ? 'desc' : 'asc';
+            sortDirection[sortBy] = direction;
+
+            sortHeaders.forEach(h => {
+                h.querySelector('i').className = 'bi bi-arrow-down-up ms-1 small opacity-50';
+            });
+            header.querySelector('i').className = direction === 'asc' ? 'bi bi-arrow-up text-primary ms-1 small' : 'bi bi-arrow-down text-primary ms-1 small';
+
+            filteredRows.sort((a, b) => {
+                let valA, valB;
+                if (sortBy === 'name') {
+                    valA = a.querySelector('td:nth-child(1) .fw-bold').textContent.trim().toLowerCase();
+                    valB = b.querySelector('td:nth-child(1) .fw-bold').textContent.trim().toLowerCase();
+                    return direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                } else if (sortBy === 'workspace') {
+                    valA = a.querySelector('td:nth-child(2) .fw-semibold').textContent.trim().toLowerCase();
+                    valB = b.querySelector('td:nth-child(2) .fw-semibold').textContent.trim().toLowerCase();
+                    return direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                } else if (sortBy === 'score') {
+                    valA = parseInt(a.querySelector('td:nth-child(5) span').getAttribute('data-raw-score') || 0);
+                    valB = parseInt(b.querySelector('td:nth-child(5) span').getAttribute('data-raw-score') || 0);
+                    return direction === 'asc' ? valA - valB : valB - valA;
+                }
+                return 0;
+            });
+
+            renderTable();
+        });
+    });
+
+    // 3. Pagination
+    function renderTable() {
+        const totalItems = filteredRows.length;
+        const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        const startIdx = (currentPage - 1) * itemsPerPage;
+        const endIdx = Math.min(startIdx + itemsPerPage, totalItems);
+
+        rows.forEach(row => row.style.display = 'none');
+        filteredRows.slice(startIdx, endIdx).forEach(row => row.style.display = '');
+
+        if (totalItems === 0) {
+            paginationStatus.textContent = "No matching leads found.";
+        } else {
+            paginationStatus.textContent = `Showing ${startIdx + 1} to ${endIdx} of ${totalItems} leads`;
+        }
+
+        let btnHTML = `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}"><a class="page-link" href="#" data-page="${currentPage - 1}"><i class="bi bi-chevron-left"></i></a></li>`;
+        for (let i = 1; i <= totalPages; i++) {
+            btnHTML += `<li class="page-item ${currentPage === i ? 'active' : ''}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+        }
+        btnHTML += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}"><a class="page-link" href="#" data-page="${currentPage + 1}"><i class="bi bi-chevron-right"></i></a></li>`;
+        paginationControls.innerHTML = btnHTML;
+
+        paginationControls.querySelectorAll('a').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetPage = parseInt(btn.getAttribute('data-page'));
+                if (targetPage && targetPage !== currentPage && targetPage >= 1 && targetPage <= totalPages) {
+                    currentPage = targetPage;
+                    renderTable();
+                }
+            });
+        });
+    }
+
+    renderTable();
+});
+</script>
+{% endblock %}

@@ -241,6 +241,18 @@ class MockDataProvider(BaseDataProvider):
                 "social_links_count": 0
             }
 
+        from app.services.scraper_service import is_social_media_url
+        if is_social_media_url(url):
+            return {
+                "has_website": False,
+                "is_social_media_only": True,
+                "social_links_count": 1,
+                "is_responsive": False,
+                "has_ssl": False,
+                "load_time_seconds": 0.0,
+                "seo_title_present": False
+            }
+
         cleaned_url = url.lower()
 
         # 1. Broken / Inactive site

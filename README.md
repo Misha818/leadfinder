@@ -131,15 +131,64 @@ The scoring engine in `app/services/scoring_service.py` evaluates targets on a `
 
 ---
 
-## 🔮 Future AI and Scraping Roadmap
+## 🔌 Configuring Real Google Places API & Live Crawler
 
-Company Finder has been deliberately structured to allow seamless expansion:
+Company Finder is pre-wired for seamless switching between offline simulations and real, live-crawled local business directories.
 
-1. **Swapping Data Providers (`app/services/data_provider.py`):**
-   * Currently, the system runs on a deterministic, realistic mock listing service (`MockDataProvider`).
-   * To upgrade to live Google Maps listings, create `app/services/google_maps_service.py` inheriting from `BaseDataProvider` and configure it to query the standard Google Places API. Swap references inside `search_service.py` with one line of code.
-2. **Upgrading Scraper Audits (`app/services/mock_service.py`):**
-   * Hook up real web crawling engines! Integrate standard libraries like `requests` and `beautifulsoup4` inside the data provider class to crawl websites, checking for meta tags, loading times, and active SSL ports in real-time.
-3. **Integrating OpenAI/Claude LLM APIs (`app/services/ai_service.py`):**
-   * Replace mock AI strings with live Anthropic SDK calls!
-   * Query the Claude API (e.g., `claude-haiku-4-5-20251001` for cost-effective speed or `claude-sonnet-4-6` for deep insights) passing the scraped business profile. Ask the model to generate a custom email cold-pitch sequence or a customized website redesign scope dynamically.
+### 1. Activating Live Google Places Searches
+To query live businesses in any city globally instead of mock data:
+1. Open your `.env` file at the root of the project.
+2. Toggle the data provider variable:
+   ```env
+   DATA_PROVIDER=google
+   ```
+3. Set your Google Cloud API key:
+   ```env
+   GOOGLE_PLACES_API_KEY=your_actual_google_places_api_key_here
+   ```
+
+### 2. Google Cloud Console Requirements
+For the `google` provider to successfully run searches, your Google API Key must have the following configurations enabled:
+* **Required API Libraries:** You must enable the **Places API** (not the legacy Places API, ensure the modern Places API is active) inside your Google Cloud Console project.
+* **Billing Enabled:** Google Cloud requires a valid billing account linked to your project to run Places queries, though they provide a free monthly credit tier.
+* **API Restrictions (Recommended):** To secure your API Key, restrict its usage to the *Places API* only under "Key Restrictions" in your API Credentials dashboard.
+
+### 3. Live Web Scraper Architecture (`app/services/scraper_service.py`)
+When you execute a scan or click the **"Re-Audit Website"** button inside a lead's cockpit, the system triggers a real-time HTTP crawler:
+* **SSL-Resilient Crawling:** Checks SSL certificates natively. If a domain has an expired, invalid, or self-signed certificate, the crawler catches the `SSLError` defensively and falls back to an unverified HTTPS/HTTP request (`verify=False`). This enables the crawler to safely extract metadata from broken domains without crashing.
+* **Metadata Extractors:** Uses `BeautifulSoup` to parse HTML, checking for meta responsive parameters (`viewport` tags), SEO indicators (`<title>` and `<meta name="description">`), open graph tags (`og:title`), and CMS signatures (auto-fingerprints WordPress, Wix, Squarespace, and Shopify).
+* **Defensive Failure Fallbacks:** If a live crawl fails (network timeouts, DNS errors), the backend catches the error and falls back to mock evaluations, ensuring a single slow website never interrupts your search result queries!
+
+
+## 💰 API Credit Management & Google Cloud Billing
+
+Company Finder includes a high-end, real-time Google Cloud Platform Billing and Budget Tracker inside `app/services/billing_service.py` to prevent any unexpected charges and keep your searches safely inside Google Maps Platform's free tier credits!
+
+### 1. Active Configuration Variables (.env)
+To track live project pricing and budgets, configure your Google Cloud identifiers:
+```env
+# GCP Identifiers
+GOOGLE_CLOUD_PROJECT_ID=your_gcp_project_id
+GOOGLE_BILLING_ACCOUNT_ID=your_billing_account_id
+```
+
+### 2. Live SKU Pricing & Catalog Cache
+* **Google Billing Catalog API:** On startup, the application queries Google's live Catalog API (`cloudbilling.googleapis.com`) for modern Maps Platform Places SKUs.
+* **Matched Tiers:** Extracts real-time unit pricing for three specific tiers matching descriptions:
+  - *Places API - Place Details - Basic* (always added)
+  - *Places API - Place Details - Contact* (website, phone, and opening hours fields)
+  - *Places API - Place Details - Atmosphere* (rating, review counts, and price levels)
+* **24-Hour Cache:** Pricing values are cached in memory for 24 hours to avoid hitting the Billing API on every lead scan.
+* **Defensive Fallback Sentinels:** If connection to Google Cloud Billing fails (due to lack of OAuth/GCP setup), the engine logs a `WARNING` and falls back to these secure hardcoded sentinel rates: `{"basic": 0.017, "contact": 0.003, "atmosphere": 0.005}`.
+
+### 3. Monthly Budgets & Approval Gate Checks
+* **Budgets API Integration:** Queries `billingbudgets.googleapis.com` for billing account budget settings. If not configured or unreachable, defaults to Google's standard **$200.00** monthly Maps free credit.
+* **Pre-Request Approval Gate:** Before launching Place Details queries, the system checks the current month's SQLite usage logs (`ApiUsage` table).
+* **Payment Required Interrupt (HTTP 402):** If your monthly spent reaches your configured free budget threshold, the backend blocks the Places query, and returns a JSON payload with **`HTTP 402 Payment Required`** containing the estimated cost of the request.
+* **Interactive Modal Authorization:** The frontend JavaScript intercepts the `402` state and triggers a beautiful **Free Credit Exhausted** modal. If you click "Approve & Continue", the request is re-sent with an `X-User-Approved: true` header. The backend parses this, executes the Places Details query, and commits the transaction log with `was_approved=True`.
+
+### 4. Billing Monitor Dashboard API Endpoints
+* **`GET /search/api/usage/summary`:** Single source of truth for the frontend dashboard panels, returning total spent, request counts, remaining free requests, and cache metrics.
+* **`GET /search/api/billing/prices`:** Exposes cached pricing data and pricing source (tooltip reveals if "Live Pricing" or "⚠️ Fallback Pricing Active").
+
+> ⚠️ **IMPORTANT NOTE:** Local `ApiUsage` tracking is an estimate computed on your database transactions logs and does not replace the Google Cloud Console billing dashboard as your authoritative billing source. Always verify budget alerts on your Google Cloud Platform console!
